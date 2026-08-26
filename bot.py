@@ -215,6 +215,7 @@ async def run_bot(single_cycle: bool = False, headless: bool = False):
     sofascore = SofaScoreClient(headless=True)
     strategy = StrategyEngine()
     browser = StakeBrowser(headless=headless)
+    telegram_task = asyncio.create_task(telegram_command_loop(telegram)) if telegram.is_configured else None
     
     await sofascore.start()
     await browser.start()
@@ -303,8 +304,30 @@ async def run_bot(single_cycle: bool = False, headless: bool = False):
     except KeyboardInterrupt:
         print("\n[Bot] Shutting down gracefully...")
     finally:
+        if telegram_task:
+            telegram_task.cancel()
         await sofascore.close()
         await browser.close()
+
+
+async def telegram_command_loop(telegram: TelegramNotifier):
+    """Answers authorized Telegram questions while the worker is running."""
+    agent = GeminiAgent()
+    offset = 0
+    while True:
+        updates = await telegram.get_updates(offset)
+        for update in updates:
+            offset = update.get("update_id", offset) + 1
+            message = update.get("message", {})
+            chat_id = str(message.get("chat", {}).get("id", ""))
+            text = message.get("text", "").strip()
+            if chat_id != str(Config.TELEGRAM_CHAT_ID) or not text:
+                continue
+            if text.lower() in ("/strategy", "what is your strategy", "what's your strategy"):
+                answer = await agent.answer_question("Explain your current live football betting strategy concisely.")
+                await telegram.send_message(answer or "Gemini is unavailable right now.")
+            elif text.lower() == "/status":
+                await telegram.send_message("The betting worker is online and monitoring matches.")
 
 
 def main():
