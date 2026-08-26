@@ -1,1 +1,1 @@
-worker: python -m playwright install chromium && python bot.py --run --headless
+worker: python bot.py --run --headless
