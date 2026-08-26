@@ -214,11 +214,12 @@ async def run_bot(single_cycle: bool = False, headless: bool = False):
 
     sofascore = SofaScoreClient(headless=True)
     strategy = StrategyEngine()
-    browser = StakeBrowser(headless=headless)
+    browser = None if Config.SIMULATION_MODE else StakeBrowser(headless=headless)
     telegram_task = asyncio.create_task(telegram_command_loop(telegram)) if telegram.is_configured else None
     
     await sofascore.start()
-    await browser.start()
+    if browser:
+        await browser.start()
 
     placed_signals = set()
 
@@ -268,26 +269,22 @@ async def run_bot(single_cycle: bool = False, headless: bool = False):
                             print(f"   Calculated Dynamic Stake: ${signal.stake_amount:.2f}")
                             print(f"   Reasoning: {signal.reasoning}")
                             
-                            # Execute bet on Stake
-                            success = await browser.execute_bet_flow(signal)
+                            # In simulation mode, notify without requiring a Stake balance or session.
+                            if Config.SIMULATION_MODE:
+                                await telegram.notify_bet_placed(signal=signal, is_simulation=True)
+                                success = True
+                            else:
+                                success = await browser.execute_bet_flow(signal)
                             if success:
                                 placed_signals.add(match_id)
-                                # Record bet in financial ledger
-                                fm.record_bet_placement(
-                                    match_id=match_id,
-                                    match_name=f"{signal.home_team} vs {signal.away_team}",
-                                    market=signal.target_market,
-                                    stake_amount=signal.stake_amount,
-                                    odds=signal.odds_estimate
-                                )
-
-                                # Send Telegram notification
-                                screenshot_path = Config.BASE_DIR / "browser_data" / f"sim_bet_{signal.match_id}.png"
-                                await telegram.notify_bet_placed(
-                                    signal=signal,
-                                    is_simulation=Config.SIMULATION_MODE,
-                                    screenshot_path=screenshot_path if screenshot_path.exists() else None
-                                )
+                                if not Config.SIMULATION_MODE:
+                                    fm.record_bet_placement(
+                                        match_id=match_id,
+                                        match_name=f"{signal.home_team} vs {signal.away_team}",
+                                        market=signal.target_market,
+                                        stake_amount=signal.stake_amount,
+                                        odds=signal.odds_estimate
+                                    )
 
                             if single_cycle and signals_processed >= 1:
                                 break
@@ -307,7 +304,8 @@ async def run_bot(single_cycle: bool = False, headless: bool = False):
         if telegram_task:
             telegram_task.cancel()
         await sofascore.close()
-        await browser.close()
+        if browser:
+            await browser.close()
 
 
 async def telegram_command_loop(telegram: TelegramNotifier):
