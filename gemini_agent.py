@@ -345,7 +345,10 @@ class GeminiAgent:
                     model=self.model,
                     contents=question,
                     config=self._types.GenerateContentConfig(
-                        system_instruction=SYSTEM_PROMPT,
+                        system_instruction=(
+                            SYSTEM_PROMPT
+                            + "\nFor a direct user question, answer in concise plain text instead of JSON."
+                        ),
                         temperature=0.2,
                         max_output_tokens=512,
                     )
