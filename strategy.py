@@ -116,8 +116,9 @@ class StrategyEngine:
             ai_result = await self._gemini.evaluate_match(match, stats, momentum)
             if ai_result is not None:
                 return self._build_signal_from_ai(match, stats, momentum, ai_result, bankroll)
-            # Gemini returned NO_BET — trust the AI
-            return None
+            if Config.GEMINI_AI_MODE == "agent":
+                return None
+            # Hybrid mode uses the deterministic strategy when Gemini is unavailable.
 
         # ── FALLBACK: original rule-based evaluation ──────────────────────────
         return self._evaluate_rules(match, stats, momentum, bankroll)
