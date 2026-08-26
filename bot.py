@@ -325,7 +325,7 @@ async def telegram_command_loop(telegram: TelegramNotifier):
                 continue
             if text.lower() in ("/strategy", "what is your strategy", "what's your strategy"):
                 answer = await agent.answer_question("Explain your current live football betting strategy concisely.")
-                await telegram.send_message(answer or "Gemini is unavailable right now.")
+                await telegram.send_message(answer or "Gemini is unavailable right now.", parse_mode="")
             elif text.lower() == "/status":
                 await telegram.send_message("The betting worker is online and monitoring matches.")
 
