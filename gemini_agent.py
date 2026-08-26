@@ -330,3 +330,28 @@ class GeminiAgent:
             }
         except Exception as e:
             return {"success": False, "error": str(e)}
+
+    async def answer_question(self, question: str) -> Optional[str]:
+        """Answers a user question using the same configured Gemini agent."""
+        if not self._enabled:
+            return None
+
+        try:
+            client = self._get_client()
+            loop = asyncio.get_event_loop()
+            response = await loop.run_in_executor(
+                None,
+                lambda: client.models.generate_content(
+                    model=self.model,
+                    contents=question,
+                    config=self._types.GenerateContentConfig(
+                        system_instruction=SYSTEM_PROMPT,
+                        temperature=0.2,
+                        max_output_tokens=512,
+                    )
+                )
+            )
+            return response.text.strip() if response.text else None
+        except Exception as e:
+            logger.error(f"[GeminiAgent] Question failed: {e}")
+            return None
