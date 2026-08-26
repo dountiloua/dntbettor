@@ -55,6 +55,23 @@ class TelegramNotifier:
             print(f"[Telegram] Failed to send message: {e}")
             return False
 
+    async def get_updates(self, offset: int = 0) -> list[Dict[str, Any]]:
+        """Reads new messages for the configured chat using Telegram polling."""
+        if not self.is_configured:
+            return []
+
+        try:
+            async with httpx.AsyncClient(timeout=35.0) as client:
+                response = await client.get(
+                    f"{self.base_url}/getUpdates",
+                    params={"offset": offset, "timeout": 30},
+                )
+                if response.status_code == 200:
+                    return response.json().get("result", [])
+        except Exception as e:
+            print(f"[Telegram] Failed to read messages: {e}")
+        return []
+
     async def send_photo(self, photo_path: Path | str, caption: Optional[str] = None) -> bool:
         """Uploads and sends a photo (such as a bet slip screenshot) with an optional caption."""
         if not self.is_configured:
