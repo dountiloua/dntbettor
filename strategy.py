@@ -111,7 +111,10 @@ class StrategyEngine:
         In Full Agent Mode (GEMINI_AI_MODE=agent), delegates the decision
         entirely to Google Gemini, with a rule-based fallback if Gemini fails.
         """
-        # ── FULL AGENT MODE: delegate to Gemini ──────────────────────────────
+        if not self._is_allowed_league(match):
+            return None
+
+        # â”€â”€ FULL AGENT MODE: delegate to Gemini â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if self._gemini and self._gemini.enabled:
             ai_result = await self._gemini.evaluate_match(match, stats, momentum)
             if ai_result is not None:
@@ -120,8 +123,18 @@ class StrategyEngine:
                 return None
             # Hybrid mode uses the deterministic strategy when Gemini is unavailable.
 
-        # ── FALLBACK: original rule-based evaluation ──────────────────────────
+        # â”€â”€ FALLBACK: original rule-based evaluation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         return self._evaluate_rules(match, stats, momentum, bankroll)
+
+    @staticmethod
+    def _is_allowed_league(match: Dict[str, Any]) -> bool:
+        league_name = str(match.get("league", match.get("leagueName", "")))
+        allowed = [
+            league.strip().lower()
+            for league in Config.ALLOWED_LEAGUES.split(",")
+            if league.strip()
+        ]
+        return bool(allowed) and any(keyword in league_name.lower() for keyword in allowed)
 
     def _build_signal_from_ai(
         self,
@@ -161,7 +174,7 @@ class StrategyEngine:
         dominant_side = momentum.get("dominant_side", "NEUTRAL") if momentum else "NEUTRAL"
 
         # Prefix reasoning with AI badge
-        reasoning = f"[🤖 Gemini AI] {ai_result.get('reasoning', '')}"
+        reasoning = f"[ðŸ¤– Gemini AI] {ai_result.get('reasoning', '')}"
 
         return BetSignal(
             match_id=match_id,
@@ -225,14 +238,12 @@ class StrategyEngine:
         total_goals = home_score + away_score
 
         # =========================================================================
-        # 🛑 DISQUALIFICATION GATES ("When NOT to Bet")
+        # ðŸ›‘ DISQUALIFICATION GATES ("When NOT to Bet")
         # =========================================================================
 
         # Gate 0: League Whitelist Filter (if configured)
-        if Config.ALLOWED_LEAGUES:
-            allowed = [l.strip().lower() for l in Config.ALLOWED_LEAGUES.split(",") if l.strip()]
-            if allowed and not any(kw in league_name.lower() for kw in allowed):
-                return None
+        if not self._is_allowed_league(match):
+            return None
 
         # Gate 1: Early Game or Late Injury Time Filter
         if minute < 15 or minute > 86:
@@ -264,7 +275,7 @@ class StrategyEngine:
         dominant_side = momentum.get("dominant_side", "NEUTRAL") if momentum else "NEUTRAL"
 
         # =========================================================================
-        # 🟢 HIGH-CONVICTION QUANTITATIVE PATTERNS ("When to Bet")
+        # ðŸŸ¢ HIGH-CONVICTION QUANTITATIVE PATTERNS ("When to Bet")
         # =========================================================================
 
         candidate_signal: Optional[Tuple[str, str, float, str, float]] = None
@@ -332,7 +343,7 @@ class StrategyEngine:
                 )
 
         # =========================================================================
-        # 🎯 DECISION & SIZING EVALUATION
+        # ðŸŽ¯ DECISION & SIZING EVALUATION
         # =========================================================================
 
         if not candidate_signal:

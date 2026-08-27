@@ -66,9 +66,12 @@ class Config:
     MAX_DAILY_BETS: int = int(os.getenv("MAX_DAILY_BETS", "4"))
     MAX_WEEKLY_BETS: int = int(os.getenv("MAX_WEEKLY_BETS", "25"))
 
-    # League Whitelist Filter (Comma-separated keywords or empty for all)
-    # e.g., "Premier League, Champions League, LaLiga, Serie A, Bundesliga, Saudi, MLS"
-    ALLOWED_LEAGUES: str = os.getenv("ALLOWED_LEAGUES", "")
+    # League Whitelist Filter (Comma-separated keywords)
+    # Defaults to the competitions approved for betting.
+    ALLOWED_LEAGUES: str = os.getenv(
+        "ALLOWED_LEAGUES",
+        "La Liga, Serie A, Premier League, Champions League",
+    )
 
     # --- Gemini AI Agent Configuration ---
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
